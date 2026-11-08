@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>足し算タイムアタック 53</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tone.js for dynamic sound effects -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+  <!-- Google Fonts for crisp typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;900&family=Outfit:wght@600;800&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"M PLUS Rounded 1c"', 'sans-serif'],
+            mono: ['"Outfit"', 'monospace'],
+          },
+          keyframes: {
+            pop: {
+              '0%': { transform: 'scale(0.8)', opacity: '0' },
+              '70%': { transform: 'scale(1.08)' },
+              '100%': { transform: 'scale(1)', opacity: '1' },
+            },
+            shake: {
+              '0%, 100%': { transform: 'translateX(0)' },
+              '20%, 60%': { transform: 'translateX(-8px)' },
+              '40%, 80%': { transform: 'translateX(8px)' },
+            },
+            pulseSuccess: {
+              '0%': { transform: 'scale(1)', backgroundColor: '#3b82f6' },
+              '50%': { transform: 'scale(1.04)', backgroundColor: '#10b981' },
+              '100%': { transform: 'scale(1)', backgroundColor: '#3b82f6' },
+            }
+          },
+          animation: {
+            pop: 'pop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+            shake: 'shake 0.35s ease-in-out',
+            pulseSuccess: 'pulseSuccess 0.3s ease-out',
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* Prevent accidental double-tap zooming on mobile touch targets */
+    button {
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    
+    .btn-num {
+      transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 0 rgba(0, 0, 0, 0.18);
+    }
+    .btn-num:active {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 rgba(0, 0, 0, 0.18);
+    }
+
+    /* Subtle background grid pattern */
+    .bg-math-pattern {
+      background-color: #f8fafc;
+      background-image: radial-gradient(#cbd5e1 1.2px, transparent 1.2px);
+      background-size: 24px 24px;
+    }
+  </style>
+</head>
+
+<body class="bg-math-pattern text-slate-800 min-h-screen flex flex-col justify-between items-center p-3 sm:p-6 select-none font-sans overflow-x-hidden">
+
+  <!-- Header Bar -->
+  <header class="w-full max-w-xl mx-auto flex items-center justify-between py-2 px-4 bg-white/90 backdrop-blur rounded-2xl shadow-sm border border-slate-200">
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center font-extrabold text-lg shadow-sm">
+        ⚡
+      </div>
+      <div>
+        <h1 class="text-base sm:text-lg font-bold text-slate-800 leading-tight">足し算タイムアタック 53</h1>
+        <p class="text-[11px] text-slate-500">答えが1〜10になる問題 × 53問</p>
+      </div>
+    </div>
+    
+    <!-- Sound Toggle -->
+    <button id="soundToggleBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-600 transition">
+      <span id="soundIcon">🔊</span>
+      <span id="soundLabel">サウンドON</span>
+    </button>
+  </header>
+
+  <main class="w-full max-w-xl mx-auto flex-1 flex flex-col justify-center my-3">
+    
+    <!-- VIEW 1: Start Screen -->
+    <section id="startScreen" class="bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-200 text-center flex flex-col items-center">
+      <div class="w-20 h-20 bg-amber-100 rounded-3xl flex items-center justify-center text-4xl mb-4 shadow-inner">
+        ⏱️
+      </div>
+      <h2 class="text-2xl sm:text-3xl font-black text-slate-800 mb-2">53問全力ダッシュ！</h2>
+      <p class="text-slate-600 text-sm sm:text-base mb-6 leading-relaxed max-w-md">
+        0〜10を使った足し算が全<span class="font-bold text-amber-600">53問</span>ランダムに出題されます。<br>
+        画面下の<span class="font-bold text-blue-600">「1」〜「10」のボタン</span>を押して最速クリアを目指しましょう！<br>
+        <span class="inline-block mt-2 font-bold text-rose-500 bg-rose-50 px-3 py-1 rounded-full text-xs">⚠️ 5回間違えるとゲームオーバー！</span>
+      </p>
+
+      <div class="grid grid-cols-3 gap-2 w-full max-w-xs mb-6 text-left">
+        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+          <div class="text-[10px] text-slate-400 font-bold">問題数</div>
+          <div class="text-base sm:text-lg font-black text-slate-700">53問</div>
+        </div>
+        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+          <div class="text-[10px] text-slate-400 font-bold">ライフ</div>
+          <div class="text-base sm:text-lg font-black text-rose-500">❤️ × 5</div>
+        </div>
+        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+          <div class="text-[10px] text-slate-400 font-bold">最高記録</div>
+          <div id="bestScoreStartDisplay" class="text-base sm:text-lg font-black text-emerald-600 font-mono">--:--.-</div>
+        </div>
+      </div>
+
+      <button id="startBtn" class="w-full max-w-xs py-4 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-xl rounded-2xl shadow-lg shadow-blue-500/30 transition transform hover:-translate-y-0.5 active:translate-y-0.5">
+        スタート！
+      </button>
+
+      <div class="mt-4 text-xs text-slate-400 flex items-center gap-1.5">
+        <span>⌨️ PCキーボードの数字キー[1-9]および[0(=10)]にも対応</span>
+      </div>
+    </section>
+
+    <!-- VIEW 2: Quiz Play Area (Hidden by default) -->
+    <section id="gameScreen" class="hidden flex flex-col gap-4">
+      
+      <!-- Status & Timer Panel -->
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex items-center justify-between">
+        <!-- Progress Counter -->
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">第</span>
+          <span id="currentQuestionNum" class="text-2xl font-black text-blue-600 font-mono">1</span>
+          <span class="text-slate-400 font-bold">/ 53 問</span>
+        </div>
+
+        <!-- Remaining Lives Indicator -->
+        <div class="flex items-center bg-rose-50 px-2.5 py-1 rounded-xl border border-rose-100">
+          <div id="lifeDisplay" class="flex gap-1 text-sm sm:text-base tracking-tight">
+            <span>❤️</span><span>❤️</span><span>❤️</span><span>❤️</span><span>❤️</span>
+          </div>
+        </div>
+
+        <!-- Timer Display -->
+        <div class="flex items-center gap-2 bg-slate-900 text-emerald-400 font-mono text-2xl font-black px-4 py-1.5 rounded-xl shadow-inner tracking-wider">
+          <span class="text-xs text-emerald-500/70 select-none">⏱</span>
+          <span id="timerDisplay">00:00.0</span>
+        </div>
+      </div>
+
+      <!-- Progress Bar -->
+      <div class="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden shadow-inner">
+        <div id="progressBar" class="bg-gradient-to-r from-blue-500 to-emerald-400 h-full w-0 transition-all duration-150 ease-out"></div>
+      </div>
+
+      <!-- Question Card -->
+      <div id="questionCard" class="bg-white rounded-3xl p-6 sm:p-10 shadow-lg border border-slate-200 text-center relative overflow-hidden transition-transform">
+        <!-- Combo Indicator -->
+        <div id="comboBadge" class="hidden absolute top-3 right-4 bg-gradient-to-r from-amber-400 to-orange-500 text-white font-black text-xs px-2.5 py-1 rounded-full shadow animate-bounce">
+          🔥 <span id="comboCount">0</span> 連続！
+        </div>
+
+        <!-- Problem Formula Text -->
+        <div class="text-slate-400 text-xs font-bold tracking-widest uppercase mb-1">計算しよう</div>
+        <div class="flex items-center justify-center gap-2 sm:gap-4 my-2">
+          <span id="formulaText" class="text-4xl sm:text-6xl font-black text-slate-800 tracking-tight font-mono">
+            0 + 0 =
+          </span>
+          <span class="w-12 sm:w-16 h-12 sm:h-16 rounded-2xl bg-blue-50 border-2 border-dashed border-blue-400 text-blue-600 flex items-center justify-center text-3xl sm:text-4xl font-black font-mono shadow-inner" id="answerSlot">
+            ?
+          </span>
+        </div>
+        <div id="feedbackText" class="h-5 text-xs font-bold text-rose-500 transition-opacity opacity-0">
+          もう一度！
+        </div>
+      </div>
+
+      <!-- Numeric Keypad (1 to 10) -->
+      <div class="bg-white/90 backdrop-blur rounded-3xl p-4 sm:p-5 shadow-lg border border-slate-200">
+        <div class="text-center text-xs font-bold text-slate-400 mb-2">こたえのボタンを押してね</div>
+        
+        <!-- 10 Buttons arranged in 2 rows of 5 for optimal ergonomic reach -->
+        <div class="grid grid-cols-5 gap-2 sm:gap-3">
+          <button data-val="1" class="btn-num bg-slate-100 hover:bg-blue-50 hover:text-blue-600 border border-slate-300 text-slate-800 text-2xl sm:text-3xl font-black font-mono py-3 sm:py-4 rounded-2xl">1</button>
+          <button data-val="2" class="btn-num bg-slate-100 hover:bg-blue-50 hover:text-blue-600 border border-slate-300 text-slate-800 text-2xl sm:text-3xl font-black font-mono py-3 sm:py-4 rounded-2xl">2</button>
+          <button data-val="3" class="btn-num bg-slate-100 hover:bg-blue-50 hover:text-blue-600 border border-slate-300 text-slate-800 text-2xl sm:text-3xl font-black font-mono py-3 sm:py-4 rounded-2xl">3</button>
+          <button data-val="4" class="btn-num bg-slate-100 hover:bg-blue-50 hover:text-blue-600 border border-slate-300 text-slate-800 text-2xl sm:text-3xl font-black font-mono py-3 sm:py-4 rounded-2xl">4</button>
+          <button data-val="5" class="btn-num bg-slate-100 hover:bg-blue-50 hover:text-blue-600 border border-slate-300 text-slate-800 text-2xl sm:text-3xl font-black font-mono py-3 sm:py-4 rounded-2xl">5</button>
+          
+          <button data-val="6" class="btn-num bg-slate-100 hover:bg-blue-50 hover:text-blue-600 border border-slate-300 text-slate-800 text-2xl sm:text-3xl font-black font-mono py-3 sm:py-4 rounded-2xl">6</button>
+          <button data-val="7" class="btn-num bg-slate-100 hover:bg-blue-50 hover:text-blue-600 border border-slate-300 text-slate-800 text-2xl sm:text-3xl font-black font-mono py-3 sm:py-4 rounded-2xl">7</button>
+          <button data-val="8" class="btn-num bg-slate-100 hover:bg-blue-50 hover:text-blue-600 border border-slate-300 text-slate-800 text-2xl sm:text-3xl font-black font-mono py-3 sm:py-4 rounded-2xl">8</button>
+          <button data-val="9" class="btn-num bg-slate-100 hover:bg-blue-50 hover:text-blue-600 border border-slate-300 text-slate-800 text-2xl sm:text-3xl font-black font-mono py-3 sm:py-4 rounded-2xl">9</button>
+          <button data-val="10" class="btn-num bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-2xl sm:text-3xl font-black font-mono py-3 sm:py-4 rounded-2xl">10</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 3: Result Screen (Hidden by default) -->
+    <section id="resultScreen" class="hidden bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-200 text-center flex flex-col items-center">
+      <div class="text-5xl mb-2 animate-bounce">🏆</div>
+      <h2 class="text-2xl sm:text-3xl font-black text-slate-800 mb-1">ゴール！おつかれさま！</h2>
+      <p class="text-slate-500 text-xs sm:text-sm mb-6">全53問をすべて解き切りました！</p>
+
+      <!-- Final Time Showcase -->
+      <div class="w-full max-w-sm bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-3xl p-6 mb-6 shadow-xl relative overflow-hidden border border-slate-800">
+        <div class="text-xs text-indigo-300 font-bold uppercase tracking-widest mb-1">あなたのタイム</div>
+        <div id="finalTimeDisplay" class="text-4xl sm:text-5xl font-black font-mono text-emerald-400 tracking-wider">
+          00:00.0
+        </div>
+        <div id="newRecordBadge" class="hidden mt-2 inline-block bg-gradient-to-r from-amber-400 to-orange-500 text-white font-black text-xs px-3 py-1 rounded-full shadow">
+          🎉 自己ベスト更新！
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 mt-5 pt-4 border-t border-slate-800 text-left">
+          <div>
+            <div class="text-[11px] text-slate-400">1問あたりの平均</div>
+            <div id="avgTimeDisplay" class="text-lg font-bold font-mono text-slate-200">0.0 秒</div>
+          </div>
+          <div>
+            <div class="text-[11px] text-slate-400">ミス回数</div>
+            <div id="missCountDisplay" class="text-lg font-bold font-mono text-rose-300">0 回</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex flex-col sm:flex-row gap-3 w-full max-w-sm">
+        <button id="retryBtn" class="flex-1 py-3.5 px-6 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-lg rounded-2xl shadow-md shadow-blue-500/20 transition active:scale-95">
+          🔄 もう一度挑戦
+        </button>
+      </div>
+    </section>
+
+    <!-- VIEW 4: Game Over Screen (Hidden by default) -->
+    <section id="gameOverScreen" class="hidden bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-rose-200 text-center flex flex-col items-center">
+      <div class="w-20 h-20 bg-rose-100 rounded-3xl flex items-center justify-center text-4xl mb-3 shadow-inner animate-shake">
+        💥
+      </div>
+      <h2 class="text-2xl sm:text-3xl font-black text-rose-600 mb-1">ゲームオーバー！</h2>
+      <p class="text-slate-600 text-sm mb-5">5回間違えてしまったため失敗です…</p>
+
+      <!-- Failure Summary Card -->
+      <div class="w-full max-w-xs bg-slate-50 border border-slate-200 rounded-2xl p-4 mb-6 text-left">
+        <div class="flex justify-between items-center py-1.5 border-b border-slate-200 text-xs">
+          <span class="text-slate-500 font-bold">到達問題</span>
+          <span id="failQuestionNum" class="font-mono font-black text-slate-800 text-sm">-- / 53問</span>
+        </div>
+        <div class="flex justify-between items-center py-1.5 border-b border-slate-200 text-xs">
+          <span class="text-slate-500 font-bold">経過タイム</span>
+          <span id="failTimeDisplay" class="font-mono font-black text-slate-800 text-sm">00:00.0</span>
+        </div>
+        <div class="flex justify-between items-center py-1.5 text-xs">
+          <span class="text-slate-500 font-bold">ミス回数</span>
+          <span class="font-mono font-black text-rose-500 text-sm">5 / 5回</span>
+        </div>
+      </div>
+
+      <button id="failRetryBtn" class="w-full max-w-xs py-3.5 px-6 bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-lg rounded-2xl shadow-lg shadow-rose-500/25 transition active:scale-95">
+        🔄 最初からやり直す
+      </button>
+    </section>
+
+  </main>
+
+  <footer class="text-center text-xs text-slate-400 py-2">
+    <span>足し算トレーニング &copy; 53問タイムアタック</span>
+  </footer>
+
+  <script>
+    // --- Application State ---
+    let soundEnabled = true;
+    let questions = [];
+    let currentIndex = 0;
+    let startTime = 0;
+    let timerInterval = null;
+    let elapsedMilliseconds = 0;
+    let combo = 0;
+    let totalMisses = 0;
+    const MAX_MISSES = 5;
+    let bestTimeMs = null; // Session memory storage
+
+    // --- Sound Synthesis with Tone.js ---
+    let synth = null;
+    let soundInitialized = false;
+
+    function initSound() {
+      if (soundInitialized) return;
+      try {
+        synth = new Tone.PolySynth(Tone.Synth, {
+          oscillator: { type: "triangle" },
+          envelope: { attack: 0.005, decay: 0.1, sustain: 0.05, release: 0.15 }
+        }).toDestination();
+        synth.volume.value = -8;
+        soundInitialized = true;
+      } catch (e) {
+        console.error("Audio init error:", e);
+      }
+    }
+
+    function playSound(type) {
+      if (!soundEnabled || !soundInitialized || !synth) return;
+      try {
+        if (Tone.context.state !== 'running') {
+          Tone.context.resume();
+        }
+        const now = Tone.now();
+        if (type === 'correct') {
+          synth.triggerAttackRelease(["E5", "B5"], "16n", now);
+        } else if (type === 'wrong') {
+          synth.triggerAttackRelease(["C3", "F#2"], "16n", now);
+        } else if (type === 'complete') {
+          synth.triggerAttackRelease(["C5", "E5", "G5", "C6"], "8n", now);
+        } else if (type === 'gameover') {
+          synth.triggerAttackRelease(["F3", "Eb3", "D3", "B2"], "8n", now);
+        }
+      } catch (err) {
+        // Silently handle audio context restrictions
+      }
+    }
+
+    // --- Sound toggle handler ---
+    const soundToggleBtn = document.getElementById('soundToggleBtn');
+    const soundIcon = document.getElementById('soundIcon');
+    const soundLabel = document.getElementById('soundLabel');
+    soundToggleBtn.addEventListener('click', () => {
+      initSound();
+      soundEnabled = !soundEnabled;
+      soundIcon.textContent = soundEnabled ? '🔊' : '🔇';
+      soundLabel.textContent = soundEnabled ? 'サウンドON' : 'サウンドOFF';
+    });
+
+    // --- Generate exactly 53 unique addition questions (answer 1 to 10) ---
+    // 0..10 addition questions where answer <= 10 and answer >= 1
+    // Total candidate pool: 65 combinations (excluding 0+0=0 since buttons are 1..10)
+    function generateRandom53Questions() {
+      const candidates = [];
+      for (let a = 0; a <= 10; a++) {
+        for (let b = 0; b <= 10; b++) {
+          const sum = a + b;
+          if (sum >= 1 && sum <= 10) {
+            candidates.push({ a, b, ans: sum });
+          }
+        }
+      }
+
+      // Fisher-Yates Shuffle
+      for (let i = candidates.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+      }
+
+      // Pick exactly 53 questions
+      return candidates.slice(0, 53);
+    }
+
+    // --- Formatting Helper ---
+    function formatTime(ms) {
+      const totalSeconds = Math.floor(ms / 1000);
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      const tenths = Math.floor((ms % 1000) / 100);
+      const mm = String(minutes).padStart(2, '0');
+      const ss = String(seconds).padStart(2, '0');
+      return `${mm}:${ss}.${tenths}`;
+    }
+
+    // --- Timer Engine ---
+    function startTimer() {
+      startTime = performance.now();
+      timerInterval = setInterval(() => {
+        elapsedMilliseconds = performance.now() - startTime;
+        document.getElementById('timerDisplay').textContent = formatTime(elapsedMilliseconds);
+      }, 50);
+    }
+
+    function stopTimer() {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+
+    const startScreen = document.getElementById('startScreen');
+    const gameScreen = document.getElementById('gameScreen');
+    const resultScreen = document.getElementById('resultScreen');
+    const gameOverScreen = document.getElementById('gameOverScreen');
+
+    function showScreen(screen) {
+      startScreen.classList.add('hidden');
+      gameScreen.classList.add('hidden');
+      resultScreen.classList.add('hidden');
+      gameOverScreen.classList.add('hidden');
+      screen.classList.remove('hidden');
+    }
+
+    function renderLives() {
+      const remaining = Math.max(0, MAX_MISSES - totalMisses);
+      const lifeDisplay = document.getElementById('lifeDisplay');
+      let heartsHtml = '';
+      for (let i = 0; i < MAX_MISSES; i++) {
+        if (i < remaining) {
+          heartsHtml += '<span class="inline-block transition-transform duration-150">❤️</span>';
+        } else {
+          heartsHtml += '<span class="inline-block opacity-30 grayscale scale-90">🖤</span>';
+        }
+      }
+      lifeDisplay.innerHTML = heartsHtml;
+    }
+
+    // --- Game Initialization ---
+    function startGame() {
+      initSound();
+      questions = generateRandom53Questions();
+      currentIndex = 0;
+      combo = 0;
+      totalMisses = 0;
+      elapsedMilliseconds = 0;
+
+      renderLives();
+      showScreen(gameScreen);
+      renderQuestion();
+      startTimer();
+    }
+
+    // --- Render Current Question ---
+    function renderQuestion() {
+      const q = questions[currentIndex];
+      const formulaEl = document.getElementById('formulaText');
+      const slotEl = document.getElementById('answerSlot');
+      const qNumEl = document.getElementById('currentQuestionNum');
+      const progressBar = document.getElementById('progressBar');
+      const comboBadge = document.getElementById('comboBadge');
+      const comboCount = document.getElementById('comboCount');
+      const feedbackText = document.getElementById('feedbackText');
+
+      feedbackText.classList.add('opacity-0');
+      qNumEl.textContent = currentIndex + 1;
+      formulaEl.textContent = `${q.a} + ${q.b} =`;
+      slotEl.textContent = '?';
+      slotEl.className = "w-12 sm:w-16 h-12 sm:h-16 rounded-2xl bg-blue-50 border-2 border-dashed border-blue-400 text-blue-600 flex items-center justify-center text-3xl sm:text-4xl font-black font-mono shadow-inner";
+
+      // Update progress bar percentage
+      const percent = ((currentIndex) / 53) * 100;
+      progressBar.style.width = `${percent}%`;
+
+      // Update Combo display
+      if (combo >= 3) {
+        comboBadge.classList.remove('hidden');
+        comboCount.textContent = combo;
+      } else {
+        comboBadge.classList.add('hidden');
+      }
+    }
+
+    function handleAnswer(selectedVal) {
+      if (currentIndex >= questions.length) return;
+
+      const currentQ = questions[currentIndex];
+      const card = document.getElementById('questionCard');
+      const slotEl = document.getElementById('answerSlot');
+      const feedbackText = document.getElementById('feedbackText');
+
+      if (selectedVal === currentQ.ans) {
+        // Correct Answer
+        playSound('correct');
+        combo++;
+        slotEl.textContent = selectedVal;
+        slotEl.className = "w-12 sm:w-16 h-12 sm:h-16 rounded-2xl bg-emerald-500 text-white flex items-center justify-center text-3xl sm:text-4xl font-black font-mono shadow-lg animate-pop";
+
+        currentIndex++;
+
+        if (currentIndex >= questions.length) {
+          // Completed all 53 questions!
+          stopTimer();
+          progressBar.style.width = '100%';
+          playSound('complete');
+          setTimeout(finishGame, 300);
+        } else {
+          // Smooth transition to next question
+          setTimeout(renderQuestion, 120);
+        }
+      } else {
+        // Wrong Answer
+        combo = 0;
+        totalMisses++;
+        renderLives();
+
+        card.classList.remove('animate-shake');
+        void card.offsetWidth; // Trigger reflow to restart animation
+        card.classList.add('animate-shake');
+
+        if (totalMisses >= MAX_MISSES) {
+          // Failed 5 times - Game Over!
+          stopTimer();
+          playSound('gameover');
+          feedbackText.textContent = "5回ミス！失敗です…";
+          feedbackText.classList.remove('opacity-0');
+          setTimeout(triggerGameOver, 400);
+        } else {
+          playSound('wrong');
+          const remaining = MAX_MISSES - totalMisses;
+          feedbackText.textContent = `まちがい！ あと ${remaining} 回で失敗`;
+          feedbackText.classList.remove('opacity-0');
+        }
+      }
+    }
+
+    function triggerGameOver() {
+      showScreen(gameOverScreen);
+      document.getElementById('failQuestionNum').textContent = `${currentIndex + 1} / 53問目`;
+      document.getElementById('failTimeDisplay').textContent = formatTime(elapsedMilliseconds);
+    }
+
+    function finishGame() {
+      showScreen(resultScreen);
+      const finalMs = elapsedMilliseconds;
+      const formatted = formatTime(finalMs);
+
+      document.getElementById('finalTimeDisplay').textContent = formatted;
+      document.getElementById('missCountDisplay').textContent = `${totalMisses} 回`;
+
+      const avgSec = ((finalMs / 1000) / 53).toFixed(2);
+      document.getElementById('avgTimeDisplay').textContent = `${avgSec} 秒`;
+
+      // Check Best Time
+      const newRecordBadge = document.getElementById('newRecordBadge');
+      if (bestTimeMs === null || finalMs < bestTimeMs) {
+        bestTimeMs = finalMs;
+        newRecordBadge.classList.remove('hidden');
+        document.getElementById('bestScoreStartDisplay').textContent = formatted;
+      } else {
+        newRecordBadge.classList.add('hidden');
+      }
+    }
+
+    // --- Attach Button Listeners for 1 to 10 Keypad ---
+    document.querySelectorAll('.btn-num').forEach(button => {
+      button.addEventListener('click', (e) => {
+        const val = parseInt(button.getAttribute('data-val'), 10);
+        handleAnswer(val);
+      });
+    });
+
+    // Keyboard support: 1..9, and '0' represents 10
+    window.addEventListener('keydown', (e) => {
+      if (gameScreen.classList.contains('hidden')) return;
+
+      if (e.key >= '1' && e.key <= '9') {
+        handleAnswer(parseInt(e.key, 10));
+      } else if (e.key === '0') {
+        handleAnswer(10);
+      }
+    });
+
+    // Start & Retry buttons
+    document.getElementById('startBtn').addEventListener('click', startGame);
+    document.getElementById('retryBtn').addEventListener('click', startGame);
+    document.getElementById('failRetryBtn').addEventListener('click', startGame);
+  </script>
+</body>
+</html>
