@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI わくわくパズルゲーム</title>
+    <title>わくわく タイルパズル</title>
     
     <!-- React & ReactDOM -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -14,23 +14,17 @@
     <script src="https://cdn.tailwindcss.com"></script>
     
     <style>
-        /* Kid-friendly rounded font */
+        /* Kid-friendly rounded font & pastel background */
         body {
             font-family: 'Zen Maru Gothic', 'Hiragino Maru Gothic ProN', 'Meiryo', sans-serif;
-            background-color: #fff0f5; /* pastel pink background */
+            background-color: #fff0f5;
             background-image: radial-gradient(#ffd1dc 2px, transparent 2px);
             background-size: 30px 30px;
+            user-select: none;
+            -webkit-user-select: none;
         }
 
         /* Fun Animations */
-        @keyframes bounce {
-            0%, 100% { transform: translateY(-5%); }
-            50% { transform: translateY(0); }
-        }
-        .animate-bounce-slow {
-            animation: bounce 2s infinite;
-        }
-
         @keyframes popIn {
             0% { transform: scale(0.8); opacity: 0; }
             100% { transform: scale(1); opacity: 1; }
@@ -38,150 +32,106 @@
         .animate-pop {
             animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
+        }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+        const { useState, useEffect } = React;
 
-        // Constants & Config
-        const API_KEY = ""; // Injected automatically by the environment
-        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent?key=${API_KEY}`;
-        
-        const THEMES = {
-            'animal': { label: 'どうぶつ', basePrompt: 'A cute, colorful, high quality illustration of friendly baby animals for kids' },
-            'nature': { label: '自然の景色', basePrompt: 'A beautiful, vibrant, cartoon nature scenery landscape, colorful, kid friendly illustration' },
-            'princess': { label: 'プリキュアのようなプリンセス', basePrompt: 'An anime style magical girl princess, cute, colorful, high quality anime art style, sparkling' }
+        // Predefined image data
+        const PREMADE = { 
+            animal: Array.from({length: 10}).map((_, i) => 'https://image.pollinations.ai/prompt/cute%20animal%20friends,%20kids%20book?width=600&height=600&nologo=true&seed=' + (100 + i)), 
+            nature: Array.from({length: 10}).map((_, i) => 'https://image.pollinations.ai/prompt/beautiful%20nature%20scenery,%20kids%20book?width=600&height=600&nologo=true&seed=' + (200 + i)), 
+            princess: Array.from({length: 10}).map((_, i) => 'https://image.pollinations.ai/prompt/cute%20anime%20magical%20girl%20princess,%20precure%20style?width=600&height=600&nologo=true&seed=' + (300 + i)) 
         };
 
         const DIFFICULTIES = [
-            { label: '16ピース (4x4)', value: 4 },
-            { label: '25ピース (5x5)', value: 5 },
-            { label: '36ピース (6x6)', value: 6 }
+            { label: '16 ピース', sub: '(4x4)', value: 4, color: 'bg-green-100 hover:bg-green-200 border-green-300 text-green-700' },
+            { label: '25 ピース', sub: '(5x5)', value: 5, color: 'bg-blue-100 hover:bg-blue-200 border-blue-300 text-blue-700' },
+            { label: '36 ピース', sub: '(6x6)', value: 6, color: 'bg-purple-100 hover:bg-purple-200 border-purple-300 text-purple-700' }
         ];
 
-        // Random adjectives to ensure unique image generation every time
-        const RANDOM_ADJECTIVES = [
-            "sparkling", "pastel colored", "vibrant", "dreamy", "neon highlights",
-            "watercolor style", "storybook style", "sunny lighting", "magical atmosphere",
-            "fluffy", "rainbow accents", "candy-like colors", "starlight"
+        const CATEGORIES = [
+            { id: 'animal', label: '🐶 どうぶつ', style: 'bg-orange-400 hover:bg-orange-500 shadow-orange-600' },
+            { id: 'nature', label: '🌳 しぜん', style: 'bg-green-400 hover:bg-green-500 shadow-green-600' },
+            { id: 'princess', label: '👑 プリンセス', style: 'bg-pink-400 hover:bg-pink-500 shadow-pink-600' },
+            { id: 'random', label: '🎲 おまかせ', style: 'bg-purple-400 hover:bg-purple-500 shadow-purple-600' }
         ];
 
         function App() {
-            const [gameState, setGameState] = useState('menu'); // menu, loading, playing, won, error
-            const [theme, setTheme] = useState('animal');
+            const [gameState, setGameState] = useState('menu'); // menu, loading, playing, won
             const [gridSize, setGridSize] = useState(4);
             const [pieces, setPieces] = useState([]);
             const [fullImageUrl, setFullImageUrl] = useState('');
+            const [lastPlayedUrl, setLastPlayedUrl] = useState('');
             const [selectedPieceIdx, setSelectedPieceIdx] = useState(null);
-            const [errorMessage, setErrorMessage] = useState('');
 
-            // --- API Call to Generate Image ---
-            const generateImage = async () => {
-                setGameState('loading');
-                setErrorMessage('');
+            // Start game with selected category
+            const startGame = (categoryId) => {
+                let selectedCat = categoryId;
                 
-                try {
-                    // Pick 2 random adjectives to force uniqueness
-                    const shuffledAdjs = [...RANDOM_ADJECTIVES].sort(() => 0.5 - Math.random());
-                    const uniqueModifiers = `${shuffledAdjs[0]}, ${shuffledAdjs[1]}`;
-                    // Add a random seed string to further guarantee a completely new image
-                    const randomSeed = Math.random().toString(36).substring(2, 10);
-                    
-                    const prompt = `${THEMES[theme].basePrompt}. Elements: ${uniqueModifiers}. (Seed: ${randomSeed})`;
-
-                    const payload = {
-                        contents: [{
-                            role: 'user',
-                            parts: [{ text: prompt }]
-                        }],
-                        generationConfig: {
-                            responseModalities: ['IMAGE'],
-                            imageConfig: { aspectRatio: "1:1" } // Square aspect ratio for square puzzle grids
-                        }
-                    };
-
-                    const response = await fetch(API_URL, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-
-                    if (!response.ok) throw new Error("APIリクエストに失敗しました (API request failed)");
-
-                    const data = await response.json();
-                    const base64Data = data.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
-                    
-                    if (!base64Data) throw new Error("画像の生成に失敗しました (Image generation failed)");
-                    
-                    const imageUrl = `data:image/jpeg;base64,${base64Data}`;
-                    setFullImageUrl(imageUrl);
-                    
-                    // Slice the generated image into pieces
-                    await preparePuzzlePieces(imageUrl, gridSize);
-                    
-                } catch (error) {
-                    console.error("Error generating image:", error);
-                    setErrorMessage("ごめんね、エラーがおきたみたい。もういちどためしてね！\n" + error.message);
-                    setGameState('error');
+                // Handle 'random' category
+                if (categoryId === 'random') {
+                    const keys = ['animal', 'nature', 'princess'];
+                    selectedCat = keys[Math.floor(Math.random() * keys.length)];
                 }
+
+                const urls = PREMADE[selectedCat];
+                let newUrl = urls[Math.floor(Math.random() * urls.length)];
+
+                // Ensure the new random image is never the same as the immediately previous one
+                if (urls.length > 1) {
+                    while (newUrl === lastPlayedUrl) {
+                        newUrl = urls[Math.floor(Math.random() * urls.length)];
+                    }
+                }
+
+                setLastPlayedUrl(newUrl);
+                setFullImageUrl(newUrl);
+                setGameState('loading');
+                setSelectedPieceIdx(null);
+
+                // Preload image to avoid blank pieces during load
+                const img = new Image();
+                img.onload = () => {
+                    initializePuzzle(newUrl, gridSize);
+                    setGameState('playing');
+                };
+                img.onerror = () => {
+                    console.error("画像の読み込みに失敗しました");
+                    setGameState('menu');
+                };
+                img.src = newUrl;
             };
 
-            // --- Slicing Image with Canvas ---
-            const preparePuzzlePieces = (src, size) => {
-                return new Promise((resolve, reject) => {
-                    const img = new Image();
-                    img.crossOrigin = "Anonymous";
-                    img.onload = () => {
-                        const pieceWidth = img.width / size;
-                        const pieceHeight = img.height / size;
-                        const canvas = document.createElement('canvas');
-                        const ctx = canvas.getContext('2d');
-                        canvas.width = pieceWidth;
-                        canvas.height = pieceHeight;
+            const initializePuzzle = (url, size) => {
+                const totalPieces = size * size;
+                let initialPieces = Array.from({ length: totalPieces }, (_, i) => i);
 
-                        let newPieces = [];
-                        
-                        for (let y = 0; y < size; y++) {
-                            for (let x = 0; x < size; x++) {
-                                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                                ctx.drawImage(
-                                    img,
-                                    x * pieceWidth, y * pieceHeight, pieceWidth, pieceHeight,
-                                    0, 0, canvas.width, canvas.height
-                                );
-                                newPieces.push({
-                                    id: y * size + x, // The correct target index
-                                    dataUrl: canvas.toDataURL('image/jpeg', 0.9)
-                                });
-                            }
-                        }
+                // Shuffle pieces (Fisher-Yates algorithm)
+                for (let i = totalPieces - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [initialPieces[i], initialPieces[j]] = [initialPieces[j], initialPieces[i]];
+                }
 
-                        // Shuffle pieces
-                        let shuffled = [...newPieces];
-                        for (let i = shuffled.length - 1; i > 0; i--) {
-                            const j = Math.floor(Math.random() * (i + 1));
-                            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-                        }
+                // Prevent the puzzle from being already solved upon starting
+                if (initialPieces.every((p, i) => p === i) && totalPieces > 1) {
+                    [initialPieces[0], initialPieces[1]] = [initialPieces[1], initialPieces[0]];
+                }
 
-                        // Ensure it's not solved right away
-                        let isSolved = shuffled.every((p, i) => p.id === i);
-                        if (isSolved && shuffled.length > 1) {
-                            [shuffled[0], shuffled[1]] = [shuffled[1], shuffled[0]];
-                        }
-
-                        setPieces(shuffled);
-                        setGameState('playing');
-                        resolve();
-                    };
-                    img.onerror = () => reject(new Error("Image load failed for slicing."));
-                    img.src = src;
-                });
+                setPieces(initialPieces);
             };
 
-            // --- Game Logic ---
             const handlePieceClick = (index) => {
                 if (gameState !== 'playing') return;
 
@@ -189,10 +139,10 @@
                     // Select first piece
                     setSelectedPieceIdx(index);
                 } else if (selectedPieceIdx === index) {
-                    // Deselect if clicked same piece
+                    // Deselect if clicked again
                     setSelectedPieceIdx(null);
                 } else {
-                    // Swap pieces
+                    // Swap the two pieces
                     const newPieces = [...pieces];
                     const temp = newPieces[selectedPieceIdx];
                     newPieces[selectedPieceIdx] = newPieces[index];
@@ -201,161 +151,149 @@
                     setPieces(newPieces);
                     setSelectedPieceIdx(null);
                     
-                    // Check win condition
-                    checkWin(newPieces);
+                    // Check if puzzle is solved
+                    if (newPieces.every((p, i) => p === i)) {
+                        setTimeout(() => setGameState('won'), 300);
+                    }
                 }
             };
 
-            const checkWin = (currentPieces) => {
-                const isWin = currentPieces.every((piece, index) => piece.id === index);
-                if (isWin) {
-                    setTimeout(() => setGameState('won'), 300);
-                }
-            };
+            // --- Render Components ---
 
-            // --- Render Helpers ---
             const renderMenu = () => (
-                <div className="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full text-center animate-pop border-4 border-pink-200">
-                    <h1 className="text-3xl font-extrabold text-pink-500 mb-6 drop-shadow-sm">
-                        ✨ AI パズル ✨
+                <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-xl w-full max-w-md text-center animate-pop border-4 border-pink-200">
+                    <h1 className="text-3xl sm:text-4xl font-extrabold text-pink-500 mb-8 drop-shadow-sm animate-float">
+                        ✨ わくわく パズル ✨
                     </h1>
                     
-                    <div className="mb-6 text-left">
-                        <label className="block text-lg font-bold text-gray-700 mb-2">どんな絵にする？</label>
-                        <select 
-                            value={theme}
-                            onChange={(e) => setTheme(e.target.value)}
-                            className="w-full text-lg p-3 rounded-xl border-2 border-purple-200 bg-purple-50 text-purple-800 focus:outline-none focus:ring-4 focus:ring-purple-300 transition-all cursor-pointer"
-                        >
-                            {Object.entries(THEMES).map(([key, t]) => (
-                                <option key={key} value={key}>{t.label}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="mb-8 text-left">
-                        <label className="block text-lg font-bold text-gray-700 mb-2">むずかしさ</label>
-                        <select 
-                            value={gridSize}
-                            onChange={(e) => setGridSize(Number(e.target.value))}
-                            className="w-full text-lg p-3 rounded-xl border-2 border-blue-200 bg-blue-50 text-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-all cursor-pointer"
-                        >
+                    <div className="mb-8">
+                        <label className="block text-xl font-bold text-gray-700 mb-4">
+                            むずかしさをえらんでね！
+                        </label>
+                        <div className="grid grid-cols-3 gap-2">
                             {DIFFICULTIES.map(d => (
-                                <option key={d.value} value={d.value}>{d.label}</option>
+                                <button
+                                    key={d.value}
+                                    onClick={() => setGridSize(d.value)}
+                                    className={`p-3 rounded-2xl border-b-4 font-bold flex flex-col items-center justify-center transition-all transform hover:-translate-y-1 ${d.color} ${gridSize === d.value ? 'ring-4 ring-pink-400 border-b-0 translate-y-1' : ''}`}
+                                >
+                                    <span className="text-lg">{d.label}</span>
+                                    <span className="text-sm opacity-80">{d.sub}</span>
+                                </button>
                             ))}
-                        </select>
+                        </div>
                     </div>
 
-                    <button 
-                        onClick={generateImage}
-                        className="w-full py-4 bg-gradient-to-r from-pink-400 to-purple-400 hover:from-pink-500 hover:to-purple-500 text-white text-xl font-bold rounded-2xl shadow-lg transform hover:scale-105 transition-all duration-200"
-                    >
-                        新しいパズルを作る！🚀
-                    </button>
+                    <div>
+                        <label className="block text-xl font-bold text-gray-700 mb-4">
+                            あそぶテーマをえらんでね！
+                        </label>
+                        <div className="grid grid-cols-2 gap-4">
+                            {CATEGORIES.map(cat => (
+                                <button 
+                                    key={cat.id}
+                                    onClick={() => startGame(cat.id)}
+                                    className={`py-4 rounded-2xl text-white text-xl font-bold border-b-4 transition-all transform hover:-translate-y-1 active:translate-y-1 active:border-b-0 ${cat.style}`}
+                                >
+                                    {cat.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                 </div>
             );
 
             const renderLoading = () => (
                 <div className="flex flex-col items-center justify-center animate-pop">
                     <div className="w-24 h-24 border-8 border-pink-200 border-t-pink-500 rounded-full animate-spin mb-6 shadow-lg"></div>
-                    <h2 className="text-2xl font-bold text-pink-600 animate-pulse bg-white px-6 py-2 rounded-full shadow-sm">
-                        AIがえをかいているよ... 🎨✨
+                    <h2 className="text-2xl font-bold text-pink-600 animate-pulse bg-white px-8 py-3 rounded-full shadow-sm border-2 border-pink-200">
+                        じゅんびちゅう... 🎨
                     </h2>
                 </div>
             );
 
             const renderPlaying = () => (
-                <div className="flex flex-col items-center w-full max-w-2xl animate-pop">
-                    <div className="bg-white p-4 rounded-3xl shadow-xl w-full">
-                        <div className="flex justify-between items-center mb-4 px-2">
-                            <span className="text-lg font-bold text-gray-600">ピースをいれかえてね！</span>
-                            <button 
-                                onClick={() => setGameState('menu')}
-                                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-bold transition-colors shadow-sm"
-                            >
-                                やめる
-                            </button>
-                        </div>
-                        
-                        {/* Puzzle Grid */}
-                        <div 
-                            className="grid gap-1 bg-gray-100 p-2 rounded-2xl mx-auto touch-none"
-                            style={{ 
-                                gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))`,
-                                width: '100%',
-                                maxWidth: '600px',
-                                aspectRatio: '1/1'
-                            }}
+                <div className="flex flex-col items-center w-full max-w-2xl animate-pop px-2">
+                    <div className="w-full flex justify-between items-center mb-4 bg-white px-6 py-3 rounded-full shadow-md border-2 border-pink-100">
+                        <span className="text-xl font-bold text-gray-700">
+                            ピースをいれかえよう！
+                        </span>
+                        <button 
+                            onClick={() => setGameState('menu')}
+                            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-bold transition-colors shadow-sm"
                         >
-                            {pieces.map((piece, index) => {
-                                const isSelected = selectedPieceIdx === index;
-                                return (
-                                    <div 
-                                        key={index}
-                                        onClick={() => handlePieceClick(index)}
-                                        className={`
-                                            relative cursor-pointer w-full h-full rounded-md overflow-hidden
-                                            transition-all duration-200 ease-in-out
-                                            ${isSelected ? 'ring-4 ring-yellow-400 scale-95 z-10 shadow-lg' : 'hover:scale-[1.02] shadow-sm'}
-                                        `}
-                                    >
-                                        <img 
-                                            src={piece.dataUrl} 
-                                            alt={`piece-${index}`}
-                                            className="w-full h-full object-cover pointer-events-none"
-                                        />
-                                    </div>
-                                );
-                            })}
-                        </div>
+                            やめる
+                        </button>
+                    </div>
+                    
+                    {/* Puzzle Grid */}
+                    <div 
+                        className="bg-gray-300 p-1 sm:p-2 rounded-xl sm:rounded-2xl mx-auto shadow-inner w-full aspect-square touch-none grid gap-1"
+                        style={{ 
+                            gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))`,
+                            gridTemplateRows: `repeat(${gridSize}, minmax(0, 1fr))`
+                        }}
+                    >
+                        {pieces.map((pieceId, index) => {
+                            // Calculate proper background position based on the piece's original ID
+                            const origRow = Math.floor(pieceId / gridSize);
+                            const origCol = pieceId % gridSize;
+                            const bgX = `${origCol * (100 / (gridSize - 1))}%`;
+                            const bgY = `${origRow * (100 / (gridSize - 1))}%`;
+                            
+                            const isSelected = selectedPieceIdx === index;
+
+                            return (
+                                <div 
+                                    key={index}
+                                    onClick={() => handlePieceClick(index)}
+                                    className={`
+                                        w-full h-full bg-no-repeat rounded-md cursor-pointer 
+                                        transition-all duration-200 ease-in-out bg-white
+                                        ${isSelected ? 'ring-4 ring-yellow-400 scale-95 z-10 shadow-lg brightness-110' : 'hover:scale-[0.98] shadow-sm'}
+                                    `}
+                                    style={{
+                                        backgroundImage: `url(${fullImageUrl})`,
+                                        backgroundSize: `${gridSize * 100}% ${gridSize * 100}%`,
+                                        backgroundPosition: `${bgX} ${bgY}`
+                                    }}
+                                />
+                            );
+                        })}
                     </div>
                 </div>
             );
 
             const renderWon = () => (
-                <div className="flex flex-col items-center animate-pop max-w-lg w-full">
-                    <div className="bg-white p-6 rounded-3xl shadow-2xl text-center border-4 border-yellow-300 relative overflow-hidden">
+                <div className="flex flex-col items-center animate-pop max-w-lg w-full px-4">
+                    <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-2xl text-center border-4 border-yellow-300 relative overflow-hidden w-full">
                         
-                        {/* Confetti / Sparkles effect using CSS */}
+                        {/* Confetti / Sparkles effect */}
                         <div className="absolute inset-0 pointer-events-none flex justify-around">
-                            <div className="text-4xl animate-bounce" style={{animationDelay: '0.1s'}}>✨</div>
-                            <div className="text-4xl animate-bounce" style={{animationDelay: '0.3s'}}>🎉</div>
-                            <div className="text-4xl animate-bounce" style={{animationDelay: '0.5s'}}>🌟</div>
+                            <div className="text-4xl animate-float" style={{animationDelay: '0.1s'}}>✨</div>
+                            <div className="text-4xl animate-float" style={{animationDelay: '0.5s'}}>🎉</div>
+                            <div className="text-4xl animate-float" style={{animationDelay: '0.3s'}}>🌟</div>
                         </div>
 
-                        <h2 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-pink-500 mb-6 drop-shadow-sm mt-4">
-                            クリア！<br/>おめでとう！
+                        <h2 className="text-3xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-pink-500 mb-6 drop-shadow-sm mt-2">
+                            クリア！おめでとう！
                         </h2>
                         
-                        <div className="p-2 bg-gradient-to-tr from-pink-200 to-yellow-200 rounded-2xl mb-6 shadow-inner">
+                        <div className="p-2 sm:p-4 bg-gradient-to-tr from-pink-100 to-yellow-100 rounded-2xl mb-8 shadow-inner">
                             <img 
                                 src={fullImageUrl} 
                                 alt="Completed" 
-                                className="w-full h-auto rounded-xl shadow-md animate-bounce-slow"
+                                className="w-full h-auto rounded-xl shadow-md"
                             />
                         </div>
                         
                         <button 
                             onClick={() => setGameState('menu')}
-                            className="w-full py-4 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white text-2xl font-bold rounded-2xl shadow-lg transform hover:scale-105 transition-all duration-200"
+                            className="w-full py-4 bg-gradient-to-b from-green-400 to-green-500 hover:from-green-500 hover:to-green-600 text-white text-2xl font-bold rounded-2xl shadow-[0_4px_0_rgb(21,128,61)] transform hover:translate-y-1 hover:shadow-none transition-all duration-150"
                         >
-                            もう一度遊ぶ！ 🎮
+                            もういちどあそぶ！ 🎮
                         </button>
                     </div>
-                </div>
-            );
-
-            const renderError = () => (
-                <div className="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full text-center animate-pop border-4 border-red-200">
-                    <div className="text-6xl mb-4">😢</div>
-                    <h2 className="text-2xl font-bold text-red-500 mb-4">エラーがおきました</h2>
-                    <p className="text-gray-600 mb-6 whitespace-pre-wrap">{errorMessage}</p>
-                    <button 
-                        onClick={() => setGameState('menu')}
-                        className="px-6 py-3 bg-pink-400 hover:bg-pink-500 text-white text-lg font-bold rounded-xl shadow-md transition-colors"
-                    >
-                        メニューにもどる
-                    </button>
                 </div>
             );
 
@@ -365,7 +303,6 @@
                     {gameState === 'loading' && renderLoading()}
                     {gameState === 'playing' && renderPlaying()}
                     {gameState === 'won' && renderWon()}
-                    {gameState === 'error' && renderError()}
                 </div>
             );
         }
