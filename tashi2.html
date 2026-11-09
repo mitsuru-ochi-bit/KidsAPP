@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>さくらんぼけいさん タイムアタック！</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;900&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'M PLUS Rounded 1c', sans-serif;
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    /* ぷっくり可愛いボタン */
+    .btn-3d {
+      transition: all 0.1s ease;
+      box-shadow: 0 6px 0 rgba(0, 0, 0, 0.18);
+    }
+    .btn-3d:active {
+      transform: translateY(4px);
+      box-shadow: 0 2px 0 rgba(0, 0, 0, 0.18);
+    }
+    /* 不正解のシェイクアニメーション */
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-10px); }
+      40%, 80% { transform: translateX(10px); }
+    }
+    .shake-anim {
+      animation: shake 0.4s ease-in-out;
+    }
+    /* 正解時のポップアニメーション */
+    @keyframes popIn {
+      0% { transform: scale(0.7); opacity: 0; }
+      70% { transform: scale(1.15); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .pop-anim {
+      animation: popIn 0.35s ease-out forwards;
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-b from-rose-100 via-amber-50 to-pink-100 min-h-screen text-slate-800 flex flex-col justify-between">
+
+  <!-- ヘッダー（タイトル＆効果音切り替え） -->
+  <header class="w-full max-w-md mx-auto pt-3 px-4 flex justify-between items-center">
+    <div class="flex items-center space-x-2">
+      <span class="text-3xl">🍒</span>
+      <h1 class="font-black text-xl text-rose-600 tracking-wide">さくらんぼけいさん</h1>
+    </div>
+    <button id="soundToggleBtn" class="bg-white/80 hover:bg-white text-rose-500 font-bold px-3 py-1.5 rounded-full text-sm border border-rose-200 shadow-sm flex items-center gap-1 active:scale-95 transition">
+      <span id="soundIcon">🔊</span>
+      <span id="soundLabel" class="text-xs">おと ON</span>
+    </button>
+  </header>
+
+  <!-- メインコンテンツ領域 -->
+  <main class="w-full max-w-md mx-auto px-4 flex-1 flex flex-col justify-center py-2">
+
+    <!-- 1. スタート画面 -->
+    <section id="startScreen" class="bg-white/95 rounded-3xl p-6 shadow-xl border-4 border-rose-200 text-center flex flex-col items-center">
+      <div class="w-20 h-20 bg-rose-100 rounded-full flex items-center justify-center text-4xl mb-3 shadow-inner">
+        🍒
+      </div>
+      <h2 class="text-2xl font-black text-rose-600 mb-1">くりあがり タイムアタック！</h2>
+      <p class="text-slate-500 text-sm font-bold mb-5">10のまとまりをつくって すばやく とこう！</p>
+
+      <!-- もんだい数えらび -->
+      <div class="w-full mb-6">
+        <label class="block text-rose-800 font-extrabold text-sm mb-2">▼ もんだいのかず を えらんでね</label>
+        <div class="grid grid-cols-3 gap-2">
+          <button type="button" class="mode-select-btn bg-white border-2 border-rose-300 hover:border-rose-500 text-rose-700 font-black py-2.5 rounded-2xl text-center active:scale-95 transition shadow-sm" data-count="10">
+            <div class="text-lg">10もん</div>
+            <div class="text-[11px] text-slate-400 font-bold">サクッと</div>
+          </button>
+          <button type="button" class="mode-select-btn bg-rose-500 border-2 border-rose-500 text-white font-black py-2.5 rounded-2xl text-center active:scale-95 transition shadow-md" data-count="20">
+            <div class="text-lg">20もん</div>
+            <div class="text-[11px] text-rose-100 font-bold">しっかり</div>
+          </button>
+          <button type="button" class="mode-select-btn bg-white border-2 border-rose-300 hover:border-rose-500 text-rose-700 font-black py-2.5 rounded-2xl text-center active:scale-95 transition shadow-sm" data-count="all">
+            <div class="text-lg">ぜんぶ</div>
+            <div class="text-[11px] text-slate-400 font-bold">36もん</div>
+          </button>
+        </div>
+      </div>
+
+      <!-- ベストタイム表示 -->
+      <div class="w-full bg-amber-50 rounded-2xl p-3 border border-amber-200 mb-6 text-left">
+        <div class="text-xs font-black text-amber-700 mb-1 flex items-center gap-1">
+          <span>🏆</span> あなたのベストタイム
+        </div>
+        <div class="grid grid-cols-3 text-center text-xs font-bold text-slate-600">
+          <div>10問: <span id="best10" class="text-rose-600 font-black">-</span></div>
+          <div>20問: <span id="best20" class="text-rose-600 font-black">-</span></div>
+          <div>全問: <span id="bestAll" class="text-rose-600 font-black">-</span></div>
+        </div>
+      </div>
+
+      <!-- スタートボタン -->
+      <button id="startBtn" class="btn-3d w-full bg-gradient-to-r from-rose-500 to-pink-500 text-white font-black text-2xl py-4 rounded-2xl border-b-4 border-rose-700 hover:brightness-105 active:scale-95">
+        スタート！ 🚀
+      </button>
+    </section>
+
+
+    <!-- 2. カウントダウン画面 -->
+    <section id="countdownScreen" class="hidden text-center py-16 flex flex-col items-center justify-center">
+      <div id="countdownNum" class="text-8xl font-black text-rose-600 drop-shadow-md animate-bounce">
+        3
+      </div>
+      <p class="text-slate-600 font-extrabold text-xl mt-4">じゅんびは いいかな？</p>
+    </section>
+
+
+    <!-- 3. ゲームプレイ画面 -->
+    <section id="gameScreen" class="hidden flex flex-col justify-between h-full">
+
+      <!-- ゲームステータスヘッダー -->
+      <div class="bg-white/90 backdrop-blur rounded-2xl p-3 shadow-md border-2 border-rose-200 mb-3">
+        <div class="flex justify-between items-center mb-1">
+          <div class="flex items-center gap-1">
+            <span class="text-xs font-black text-slate-400">もんだい</span>
+            <span id="currentQuestionNum" class="text-lg font-black text-rose-600">1</span>
+            <span class="text-xs font-bold text-slate-400">/ <span id="totalQuestionsNum">10</span></span>
+          </div>
+
+          <div class="flex items-center gap-1 font-mono text-xl font-black text-slate-700 bg-amber-100 px-3 py-0.5 rounded-full border border-amber-300">
+            <span>⏱️</span>
+            <span id="timerDisplay">00:00.0</span>
+          </div>
+        </div>
+
+        <!-- 進行プログレスバー -->
+        <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden border border-slate-200">
+          <div id="progressBar" class="bg-gradient-to-r from-rose-400 to-pink-500 h-full w-0 transition-all duration-200 rounded-full"></div>
+        </div>
+      </div>
+
+      <!-- 出題カード：式のみを大きく表示 -->
+      <div id="questionCard" class="bg-white rounded-3xl p-5 shadow-xl border-4 border-rose-300 text-center relative flex flex-col justify-center items-center min-h-[140px] my-auto">
+
+        <!-- コンボ表示バッジ -->
+        <div id="comboBadge" class="hidden absolute -top-3 right-4 bg-amber-400 text-amber-950 text-xs font-black px-3 py-1 rounded-full shadow-md border-2 border-white animate-pulse">
+          🔥 <span id="comboCount">0</span> れんぞく！
+        </div>
+
+        <!-- 式表示エリア -->
+        <div class="flex items-center justify-center space-x-2 text-4xl sm:text-5xl font-black text-slate-800 tracking-wide">
+          <span id="termA" class="text-rose-600">8</span>
+          <span class="text-slate-400">+</span>
+          <span id="termB" class="text-pink-600">5</span>
+          <span class="text-slate-400">=</span>
+
+          <!-- 2桁の答え入力ボックス -->
+          <div id="answerDisplayBox" class="inline-flex items-center justify-center bg-rose-50 border-4 border-rose-400 rounded-2xl w-24 h-16 sm:w-28 sm:h-18 px-2 shadow-inner text-rose-600 font-mono tracking-widest text-4xl sm:text-5xl">
+            <span id="digit1" class="w-6 text-center text-slate-300">?</span>
+            <span id="digit2" class="w-6 text-center text-slate-300">?</span>
+          </div>
+        </div>
+
+        <!-- フィードバック表示（せいかい！／ちがうよ） -->
+        <div id="feedbackText" class="h-6 text-sm font-black mt-2 text-rose-500 flex items-center justify-center gap-1">
+          <span class="text-slate-400 font-bold text-xs">テンキーで 2つの すうじ を おしてね</span>
+        </div>
+      </div>
+
+      <!-- 各問正解時のさくらんぼ解説エリア（初期は非表示） -->
+      <div id="roundExplainContainer" class="hidden mt-3 bg-white/95 rounded-3xl p-4 shadow-xl border-4 border-emerald-300 flex flex-col items-center pop-anim">
+        <!-- ヘッダーバッジ -->
+        <div class="w-full flex items-center justify-between mb-2">
+          <span class="text-xs font-black text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full border border-emerald-300 flex items-center gap-1">
+            <span>⭕</span> せいかい！
+          </span>
+          <span class="text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200">
+            ⏸️ タイマーていし中（じっくりよんでね）
+          </span>
+        </div>
+
+        <!-- さくらんぼSVG & ステップ表示 -->
+        <div id="roundSakuranboContent" class="w-full flex flex-col sm:flex-row items-center justify-center gap-3 bg-rose-50/70 p-3 rounded-2xl border border-rose-200">
+          <!-- JSで動的挿入 -->
+        </div>
+
+        <!-- つぎへ進むボタン -->
+        <button type="button" id="nextQuestionBtn" class="btn-3d w-full mt-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-black text-xl py-3 rounded-2xl border-b-4 border-emerald-700 active:scale-95 flex items-center justify-center gap-2">
+          <span>つぎの もんだいへ！</span>
+          <span>➔</span>
+        </button>
+      </div>
+
+      <!-- テンキーエリア（問題の下に配置） -->
+      <div id="tenkeyContainer" class="mt-3 bg-white/95 rounded-3xl p-3 shadow-lg border-2 border-rose-200">
+        <div class="grid grid-cols-3 gap-2.5">
+          <!-- 1〜9 -->
+          <button type="button" class="key-btn btn-3d bg-white text-slate-800 font-black text-3xl py-3.5 rounded-2xl border-b-4 border-slate-200 active:bg-rose-50 active:text-rose-600" data-val="1">1</button>
+          <button type="button" class="key-btn btn-3d bg-white text-slate-800 font-black text-3xl py-3.5 rounded-2xl border-b-4 border-slate-200 active:bg-rose-50 active:text-rose-600" data-val="2">2</button>
+          <button type="button" class="key-btn btn-3d bg-white text-slate-800 font-black text-3xl py-3.5 rounded-2xl border-b-4 border-slate-200 active:bg-rose-50 active:text-rose-600" data-val="3">3</button>
+          <button type="button" class="key-btn btn-3d bg-white text-slate-800 font-black text-3xl py-3.5 rounded-2xl border-b-4 border-slate-200 active:bg-rose-50 active:text-rose-600" data-val="4">4</button>
+          <button type="button" class="key-btn btn-3d bg-white text-slate-800 font-black text-3xl py-3.5 rounded-2xl border-b-4 border-slate-200 active:bg-rose-50 active:text-rose-600" data-val="5">5</button>
+          <button type="button" class="key-btn btn-3d bg-white text-slate-800 font-black text-3xl py-3.5 rounded-2xl border-b-4 border-slate-200 active:bg-rose-50 active:text-rose-600" data-val="6">6</button>
+          <button type="button" class="key-btn btn-3d bg-white text-slate-800 font-black text-3xl py-3.5 rounded-2xl border-b-4 border-slate-200 active:bg-rose-50 active:text-rose-600" data-val="7">7</button>
+          <button type="button" class="key-btn btn-3d bg-white text-slate-800 font-black text-3xl py-3.5 rounded-2xl border-b-4 border-slate-200 active:bg-rose-50 active:text-rose-600" data-val="8">8</button>
+          <button type="button" class="key-btn btn-3d bg-white text-slate-800 font-black text-3xl py-3.5 rounded-2xl border-b-4 border-slate-200 active:bg-rose-50 active:text-rose-600" data-val="9">9</button>
+
+          <!-- けす / 0 / クリア -->
+          <button type="button" id="backspaceBtn" class="btn-3d bg-amber-100 text-amber-800 font-black text-lg py-3.5 rounded-2xl border-b-4 border-amber-300 active:bg-amber-200 flex flex-col items-center justify-center">
+            <span>⌫</span>
+            <span class="text-[10px] -mt-1 font-bold">1もじ けす</span>
+          </button>
+          <button type="button" class="key-btn btn-3d bg-white text-slate-800 font-black text-3xl py-3.5 rounded-2xl border-b-4 border-slate-200 active:bg-rose-50 active:text-rose-600" data-val="0">0</button>
+          <button type="button" id="clearBtn" class="btn-3d bg-rose-100 text-rose-700 font-black text-lg py-3.5 rounded-2xl border-b-4 border-rose-300 active:bg-rose-200 flex flex-col items-center justify-center">
+            <span>✕</span>
+            <span class="text-[10px] -mt-1 font-bold">ぜんぶ けす</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- 4. 結果画面 ＆ さくらんぼ計算ビジュアル解説 -->
+    <section id="resultScreen" class="hidden flex flex-col space-y-4 pb-8">
+      
+      <!-- 結果サマリーカード -->
+      <div class="bg-white rounded-3xl p-6 shadow-xl border-4 border-rose-300 text-center relative overflow-hidden">
+        <div class="text-5xl mb-2">🎉</div>
+        <h2 class="text-2xl font-black text-rose-600">ゴール！おめでとう！</h2>
+        <p id="rankComment" class="text-sm font-black text-amber-600 mt-1">ぜんもん せいかい！すばらしい！</p>
+
+        <!-- 記録表示 -->
+        <div class="grid grid-cols-2 gap-3 my-4">
+          <div class="bg-rose-50 rounded-2xl p-3 border border-rose-200">
+            <div class="text-xs font-bold text-slate-500">クリアタイム</div>
+            <div id="finalTime" class="text-2xl font-black text-rose-600 font-mono">00:00.0</div>
+          </div>
+          <div class="bg-amber-50 rounded-2xl p-3 border border-amber-200">
+            <div class="text-xs font-bold text-slate-500">正解数（一発クリア）</div>
+            <div id="finalScore" class="text-2xl font-black text-amber-600 font-mono">10 / 10</div>
+          </div>
+        </div>
+
+        <!-- もう一度・トップへボタン -->
+        <div class="flex gap-2">
+          <button id="retryBtn" class="btn-3d flex-1 bg-gradient-to-r from-rose-500 to-pink-500 text-white font-black text-lg py-3 rounded-2xl border-b-4 border-rose-700 active:scale-95">
+            もういっかい 🔄
+          </button>
+          <button id="homeBtn" class="btn-3d bg-slate-100 text-slate-700 font-black text-base px-5 py-3 rounded-2xl border-b-4 border-slate-300 hover:bg-slate-200 active:scale-95">
+            もどる 🏠
+          </button>
+        </div>
+      </div>
+
+      <!-- さくらんぼ計算 解説セクション -->
+      <div class="bg-white/95 rounded-3xl p-5 shadow-lg border-2 border-rose-200">
+        <div class="flex items-center justify-between mb-3 border-b-2 border-rose-100 pb-2">
+          <div class="flex items-center gap-2">
+            <span class="text-2xl">🍒</span>
+            <div>
+              <h3 class="font-black text-rose-700 text-base">さくらんぼけいさん かいせつ</h3>
+              <p class="text-[11px] text-slate-500 font-bold">10のまとまりの つくりかた を ふくしゅうしよう！</p>
+            </div>
+          </div>
+          <span class="text-xs bg-rose-100 text-rose-700 font-black px-2.5 py-1 rounded-full">ぜんもん</span>
+        </div>
+
+        <!-- 問題ごとのさくらんぼ解説カードコンテナ -->
+        <div id="sakuranboList" class="space-y-4 max-h-[420px] overflow-y-auto pr-1">
+          <!-- JSで動的生成 -->
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- フッター -->
+  <footer class="w-full text-center py-2 text-xs text-rose-400 font-bold">
+    © さくらんぼけいさん タイムアタック！
+  </footer>
+
+
+  <!-- アプリスクリプト -->
+  <script>
+    /* ========================================================
+       1. データ定義（1桁+1桁で繰り上がり11〜18になる全36問）
+       ======================================================== */
+    const ALL_PROBLEMS = [
+      // 答えが11 (8通り)
+      { a: 2, b: 9 }, { a: 3, b: 8 }, { a: 4, b: 7 }, { a: 5, b: 6 },
+      { a: 6, b: 5 }, { a: 7, b: 4 }, { a: 8, b: 3 }, { a: 9, b: 2 },
+      // 答えが12 (7通り)
+      { a: 3, b: 9 }, { a: 4, b: 8 }, { a: 5, b: 7 }, { a: 6, b: 6 },
+      { a: 7, b: 5 }, { a: 8, b: 4 }, { a: 9, b: 3 },
+      // 答えが13 (6通り)
+      { a: 4, b: 9 }, { a: 5, b: 8 }, { a: 6, b: 7 }, { a: 7, b: 6 },
+      { a: 8, b: 5 }, { a: 9, b: 4 },
+      // 答えが14 (5通り)
+      { a: 5, b: 9 }, { a: 6, b: 8 }, { a: 7, b: 7 }, { a: 8, b: 6 },
+      { a: 9, b: 5 },
+      // 答えが15 (4通り)
+      { a: 6, b: 9 }, { a: 7, b: 8 }, { a: 8, b: 7 }, { a: 9, b: 6 },
+      // 答えが16 (3通り)
+      { a: 7, b: 9 }, { a: 8, b: 8 }, { a: 9, b: 7 },
+      // 答えが17 (2通り)
+      { a: 8, b: 9 }, { a: 9, b: 8 },
+      // 答えが18 (1通り)
+      { a: 9, b: 9 }
+    ];
+
+    /* ========================================================
+       2. Web Audio API（効果音生成・外部依存なし）
+       ======================================================== */
+    class SoundManager {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true;
+      }
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) {
+            this.ctx = new AudioContext();
+          }
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+      playTap() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(520, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(780, this.ctx.currentTime + 0.06);
+        gain.gain.setValueAtTime(0.18, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.06);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.06);
+      }
+      playCorrect() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        // 明るいピロリロリーン♪
+        const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+        notes.forEach((freq, i) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime + i * 0.07);
+          gain.gain.setValueAtTime(0, this.ctx.currentTime + i * 0.07);
+          gain.gain.linearRampToValueAtTime(0.2, this.ctx.currentTime + i * 0.07 + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + i * 0.07 + 0.22);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(this.ctx.currentTime + i * 0.07);
+          osc.stop(this.ctx.currentTime + i * 0.07 + 0.25);
+        });
+      }
+      playWrong() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        // 低めのポヨン音
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(260, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(140, this.ctx.currentTime + 0.25);
+        gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.25);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.25);
+      }
+      playFanfare() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const melody = [
+          { f: 523.25, d: 0.12 }, // C
+          { f: 659.25, d: 0.12 }, // E
+          { f: 783.99, d: 0.12 }, // G
+          { f: 1046.5, d: 0.35 }  // C (長め)
+        ];
+        let t = this.ctx.currentTime;
+        melody.forEach(m => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(m.f, t);
+          gain.gain.setValueAtTime(0.25, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + m.d);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(t);
+          osc.stop(t + m.d);
+          t += m.d * 0.9;
+        });
+      }
+    }
+    const sound = new SoundManager();
+
+    /* ========================================================
+       3. アプリの状態管理
+       ======================================================== */
+    let selectedMode = 20; // 10, 20, 'all'
+    let currentQuestions = [];
+    let currentIndex = 0;
+    let inputDigits = ''; // テンキーで押された数字（最大2文字）
+    let firstTrySuccessCount = 0;
+    let isCurrentFirstTry = true;
+    let combo = 0;
+    let isChecking = false;
+
+    // タイマー関連（解説表示中の一時停止に対応）
+    let timerInterval = null;
+    let accumulatedMs = 0;
+    let lastResumeTime = 0;
+    let isTimerRunning = false;
+
+    // プレイ履歴（結果画面のさくらんぼ解説用）
+    let playHistory = [];
+
+    // ベストタイム記録（セッションメモリ）
+    const bestTimes = {
+      10: null,
+      20: null,
+      all: null
+    };
+
+    /* ========================================================
+       4. DOM要素
+       ======================================================== */
+    const startScreen = document.getElementById('startScreen');
+    const countdownScreen = document.getElementById('countdownScreen');
+    const gameScreen = document.getElementById('gameScreen');
+    const resultScreen = document.getElementById('resultScreen');
+
+    const countdownNum = document.getElementById('countdownNum');
+    const currentQuestionNum = document.getElementById('currentQuestionNum');
+    const totalQuestionsNum = document.getElementById('totalQuestionsNum');
+    const timerDisplay = document.getElementById('timerDisplay');
+    const progressBar = document.getElementById('progressBar');
+
+    const termA = document.getElementById('termA');
+    const termB = document.getElementById('termB');
+    const digit1 = document.getElementById('digit1');
+    const digit2 = document.getElementById('digit2');
+    const feedbackText = document.getElementById('feedbackText');
+    const questionCard = document.getElementById('questionCard');
+    const comboBadge = document.getElementById('comboBadge');
+    const comboCount = document.getElementById('comboCount');
+
+    const tenkeyContainer = document.getElementById('tenkeyContainer');
+    const roundExplainContainer = document.getElementById('roundExplainContainer');
+    const roundSakuranboContent = document.getElementById('roundSakuranboContent');
+    const nextQuestionBtn = document.getElementById('nextQuestionBtn');
+
+    const finalTime = document.getElementById('finalTime');
+    const finalScore = document.getElementById('finalScore');
+    const rankComment = document.getElementById('rankComment');
+    const sakuranboList = document.getElementById('sakuranboList');
+
+    const soundToggleBtn = document.getElementById('soundToggleBtn');
+    const soundIcon = document.getElementById('soundIcon');
+    const soundLabel = document.getElementById('soundLabel');
+
+    /* ========================================================
+       5. イベントリスナー設定
+       ======================================================== */
+    // 音声ON/OFF切り替え
+    soundToggleBtn.addEventListener('click', () => {
+      sound.enabled = !sound.enabled;
+      if (sound.enabled) {
+        soundIcon.textContent = '🔊';
+        soundLabel.textContent = 'おと ON';
+        sound.playTap();
+      } else {
+        soundIcon.textContent = '🔇';
+        soundLabel.textContent = 'おと OFF';
+      }
+    });
+
+    // モード選択（10問、20問、全問）
+    document.querySelectorAll('.mode-select-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        sound.playTap();
+        document.querySelectorAll('.mode-select-btn').forEach(b => {
+          b.classList.remove('bg-rose-500', 'border-rose-500', 'text-white', 'shadow-md');
+          b.classList.add('bg-white', 'border-rose-300', 'text-rose-700', 'shadow-sm');
+          b.querySelector('div:last-child').classList.remove('text-rose-100');
+          b.querySelector('div:last-child').classList.add('text-slate-400');
+        });
+        const target = e.currentTarget;
+        target.classList.remove('bg-white', 'border-rose-300', 'text-rose-700', 'shadow-sm');
+        target.classList.add('bg-rose-500', 'border-rose-500', 'text-white', 'shadow-md');
+        target.querySelector('div:last-child').classList.remove('text-slate-400');
+        target.querySelector('div:last-child').classList.add('text-rose-100');
+
+        const countVal = target.getAttribute('data-count');
+        selectedMode = countVal === 'all' ? 'all' : parseInt(countVal, 10);
+      });
+    });
+
+    // スタートボタン
+    document.getElementById('startBtn').addEventListener('click', () => {
+      sound.playTap();
+      startCountdown();
+    });
+
+    // テンキー入力
+    document.querySelectorAll('.key-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = btn.getAttribute('data-val');
+        handleNumberInput(val);
+      });
+    });
+
+    // 1文字消す
+    document.getElementById('backspaceBtn').addEventListener('click', () => {
+      if (isChecking) return;
+      sound.playTap();
+      if (inputDigits.length > 0) {
+        inputDigits = inputDigits.slice(0, -1);
+        updateInputDisplay();
+      }
+    });
+
+    // 全部消す
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      if (isChecking) return;
+      sound.playTap();
+      inputDigits = '';
+      updateInputDisplay();
+    });
+
+    // 「つぎの もんだいへ！」ボタン
+    nextQuestionBtn.addEventListener('click', () => {
+      sound.playTap();
+      proceedToNextQuestion();
+    });
+
+    // キーボード入力サポート（PC用）
+    window.addEventListener('keydown', (e) => {
+      if (gameScreen.classList.contains('hidden')) return;
+
+      // 解説表示中の Enter または Space で次へ進む
+      if (!roundExplainContainer.classList.contains('hidden')) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          sound.playTap();
+          proceedToNextQuestion();
+        }
+        return;
+      }
+
+      if (e.key >= '0' && e.key <= '9') {
+        handleNumberInput(e.key);
+      } else if (e.key === 'Backspace') {
+        if (inputDigits.length > 0 && !isChecking) {
+          sound.playTap();
+          inputDigits = inputDigits.slice(0, -1);
+          updateInputDisplay();
+        }
+      } else if (e.key === 'Escape' || e.key === 'Delete') {
+        if (!isChecking) {
+          sound.playTap();
+          inputDigits = '';
+          updateInputDisplay();
+        }
+      }
+    });
+
+    // もう一度
+    document.getElementById('retryBtn').addEventListener('click', () => {
+      sound.playTap();
+      startCountdown();
+    });
+
+    // ホームへ戻る
+    document.getElementById('homeBtn').addEventListener('click', () => {
+      sound.playTap();
+      resultScreen.classList.add('hidden');
+      startScreen.classList.remove('hidden');
+      updateBestTimesUI();
+    });
+
+    /* ========================================================
+       6. ゲーム進行ロジック
+       ======================================================== */
+    // 配列のシャッフル（Fisher-Yates）
+    function shuffleArray(arr) {
+      const copy = [...arr];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    // カウントダウン開始
+    function startCountdown() {
+      startScreen.classList.add('hidden');
+      resultScreen.classList.add('hidden');
+      gameScreen.classList.add('hidden');
+      countdownScreen.classList.remove('hidden');
+
+      let count = 3;
+      countdownNum.textContent = count;
+
+      const timer = setInterval(() => {
+        count--;
+        if (count > 0) {
+          countdownNum.textContent = count;
+          sound.playTap();
+        } else if (count === 0) {
+          countdownNum.textContent = 'スタート！';
+          sound.playTap();
+        } else {
+          clearInterval(timer);
+          countdownScreen.classList.add('hidden');
+          initGame();
+        }
+      }, 750);
+    }
+
+    // ゲーム初期化
+    function initGame() {
+      // 問題リストを作成
+      const shuffled = shuffleArray(ALL_PROBLEMS);
+      const qCount = selectedMode === 'all' ? ALL_PROBLEMS.length : selectedMode;
+      currentQuestions = shuffled.slice(0, qCount);
+
+      currentIndex = 0;
+      firstTrySuccessCount = 0;
+      combo = 0;
+      playHistory = [];
+      isChecking = false;
+
+      totalQuestionsNum.textContent = currentQuestions.length;
+      updateComboUI();
+
+      gameScreen.classList.remove('hidden');
+
+      // タイマー開始
+      accumulatedMs = 0;
+      startTimer();
+
+      loadQuestion();
+    }
+
+    // タイマー管理（解説表示中の一時停止に対応）
+    function startTimer() {
+      lastResumeTime = Date.now();
+      isTimerRunning = true;
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        if (isTimerRunning) {
+          const currentTotal = accumulatedMs + (Date.now() - lastResumeTime);
+          updateTimerDisplay(currentTotal);
+        }
+      }, 47);
+    }
+
+    function pauseTimer() {
+      if (isTimerRunning) {
+        accumulatedMs += Date.now() - lastResumeTime;
+        isTimerRunning = false;
+        clearInterval(timerInterval);
+        updateTimerDisplay(accumulatedMs);
+      }
+    }
+
+    function resumeTimer() {
+      if (!isTimerRunning) {
+        lastResumeTime = Date.now();
+        isTimerRunning = true;
+        startTimer();
+      }
+    }
+
+    function updateTimerDisplay(ms) {
+      const totalSec = ms / 1000;
+      const mins = Math.floor(totalSec / 60);
+      const secs = Math.floor(totalSec % 60);
+      const dec = Math.floor((ms % 1000) / 100);
+      timerDisplay.textContent = 
+        `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}.${dec}`;
+    }
+
+    function formatTime(ms) {
+      const totalSec = ms / 1000;
+      const mins = Math.floor(totalSec / 60);
+      const secs = Math.floor(totalSec % 60);
+      const dec = Math.floor((ms % 1000) / 100);
+      return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}.${dec}`;
+    }
+
+    // 問題の読み込み
+    function loadQuestion() {
+      // テンキーを表示し、解説を非表示に戻す
+      roundExplainContainer.classList.add('hidden');
+      tenkeyContainer.classList.remove('hidden');
+
+      const q = currentQuestions[currentIndex];
+      termA.textContent = q.a;
+      termB.textContent = q.b;
+      currentQuestionNum.textContent = currentIndex + 1;
+
+      // プログレスバー
+      const pct = (currentIndex / currentQuestions.length) * 100;
+      progressBar.style.width = `${pct}%`;
+
+      inputDigits = '';
+      isCurrentFirstTry = true;
+      isChecking = false;
+      updateInputDisplay();
+
+      feedbackText.innerHTML = '<span class="text-slate-400 font-bold text-xs">テンキーで 2つの すうじ を おしてね</span>';
+      questionCard.classList.remove('shake-anim', 'pop-anim');
+
+      // タイマー再開
+      resumeTimer();
+    }
+
+    // テンキー入力処理
+    function handleNumberInput(num) {
+      if (isChecking) return;
+      if (inputDigits.length >= 2) return;
+
+      sound.playTap();
+      inputDigits += num;
+      updateInputDisplay();
+
+      // 2桁入力されたら自動判定！
+      if (inputDigits.length === 2) {
+        checkAnswer();
+      }
+    }
+
+    // 入力枠の表示更新
+    function updateInputDisplay() {
+      if (inputDigits.length === 0) {
+        digit1.textContent = '?';
+        digit1.className = 'w-6 text-center text-slate-300';
+        digit2.textContent = '?';
+        digit2.className = 'w-6 text-center text-slate-300';
+      } else if (inputDigits.length === 1) {
+        digit1.textContent = inputDigits[0];
+        digit1.className = 'w-6 text-center text-rose-600 font-bold';
+        digit2.textContent = '?';
+        digit2.className = 'w-6 text-center text-slate-300 animate-pulse';
+      } else if (inputDigits.length === 2) {
+        digit1.textContent = inputDigits[0];
+        digit1.className = 'w-6 text-center text-rose-600 font-bold';
+        digit2.textContent = inputDigits[1];
+        digit2.className = 'w-6 text-center text-rose-600 font-bold';
+      }
+    }
+
+    // 回答判定
+    function checkAnswer() {
+      isChecking = true;
+      const q = currentQuestions[currentIndex];
+      const correctAns = q.a + q.b;
+      const userAns = parseInt(inputDigits, 10);
+
+      if (userAns === correctAns) {
+        // 【正解！】
+        sound.playCorrect();
+        if (isCurrentFirstTry) {
+          firstTrySuccessCount++;
+          combo++;
+        }
+        updateComboUI();
+
+        feedbackText.innerHTML = '<span class="text-emerald-500 font-black text-lg">⭕ せいかい！</span>';
+        questionCard.classList.add('pop-anim');
+
+        // 解説中はタイマーを一時停止（焦らず読めるように）
+        pauseTimer();
+
+        // 履歴保存（結果画面用）
+        playHistory.push({
+          a: q.a,
+          b: q.b,
+          ans: correctAns,
+          firstTry: isCurrentFirstTry
+        });
+
+        // その場でさくらんぼ解説を表示！
+        showRoundExplanation(q, correctAns);
+
+      } else {
+        // 【不正解】
+        sound.playWrong();
+        isCurrentFirstTry = false;
+        combo = 0;
+        updateComboUI();
+
+        feedbackText.innerHTML = '<span class="text-rose-500 font-black text-lg">✕ おしい！ もういちど！</span>';
+        questionCard.classList.add('shake-anim');
+
+        // 0.45秒後にシェイクを解除して入力リセット（再チャレンジ可能）
+        setTimeout(() => {
+          questionCard.classList.remove('shake-anim');
+          inputDigits = '';
+          updateInputDisplay();
+          isChecking = false;
+        }, 450);
+      }
+    }
+
+    // 毎問の正解時にさくらんぼ解説を表示
+    function showRoundExplanation(q, ans) {
+      const need = 10 - q.a;
+      const rest = q.b - need;
+
+      // テンキーを隠して解説カードを表示
+      tenkeyContainer.classList.add('hidden');
+      roundExplainContainer.classList.remove('hidden');
+
+      // SVGと解説テキストを生成してセット
+      const svgCherry = createSakuranboSVG(q.a, q.b, need, rest, ans);
+      const textSteps = `
+        <div class="flex-1 w-full text-left space-y-2">
+          <div class="flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-white p-2 rounded-xl border border-rose-200">
+            <span class="bg-rose-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs shrink-0 font-black">1</span>
+            <div><span class="font-black text-rose-600">${q.a}</span> は あと <span class="text-rose-600 font-black text-sm">「${need}」</span> で 10！</div>
+          </div>
+          <div class="flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-white p-2 rounded-xl border border-rose-200">
+            <span class="bg-pink-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs shrink-0 font-black">2</span>
+            <div>うしろの <span class="font-black text-pink-600">${q.b}</span> を <span class="text-rose-600 font-black">「${need}」</span> と <span class="text-pink-600 font-black">「${rest}」</span> に わける（🍒）</div>
+          </div>
+          <div class="flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-white p-2 rounded-xl border border-rose-200">
+            <span class="bg-amber-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs shrink-0 font-black">3</span>
+            <div>10 と <span class="text-pink-600 font-black">「${rest}」</span> を あわせて こたえは <span class="text-rose-600 font-black text-sm">「${ans}」</span>！</div>
+          </div>
+        </div>
+      `;
+
+      roundSakuranboContent.innerHTML = `
+        <div class="shrink-0 flex items-center justify-center bg-white p-2 rounded-2xl border border-rose-200 shadow-inner">
+          ${svgCherry}
+        </div>
+        ${textSteps}
+      `;
+    }
+
+    // 「つぎへ」ボタン押下時の進行
+    function proceedToNextQuestion() {
+      currentIndex++;
+      if (currentIndex < currentQuestions.length) {
+        loadQuestion();
+      } else {
+        finishGame();
+      }
+    }
+
+    // コンボ表示の更新
+    function updateComboUI() {
+      if (combo >= 2) {
+        comboBadge.classList.remove('hidden');
+        comboCount.textContent = combo;
+      } else {
+        comboBadge.classList.add('hidden');
+      }
+    }
+
+    // ゲーム終了（リザルト表示）
+    function finishGame() {
+      pauseTimer();
+      progressBar.style.width = '100%';
+      sound.playFanfare();
+
+      gameScreen.classList.add('hidden');
+      resultScreen.classList.remove('hidden');
+
+      const timeStr = formatTime(accumulatedMs);
+      finalTime.textContent = timeStr;
+      finalScore.textContent = `${firstTrySuccessCount} / ${currentQuestions.length}`;
+
+      // ベストタイム更新
+      const modeKey = selectedMode;
+      if (!bestTimes[modeKey] || accumulatedMs < bestTimes[modeKey]) {
+        bestTimes[modeKey] = accumulatedMs;
+        rankComment.textContent = '🌟 じこベストこうしん！すごい！ 🌟';
+      } else if (firstTrySuccessCount === currentQuestions.length) {
+        rankComment.textContent = '💮 パ〜フェクト！たいへんよくできました！';
+      } else {
+        rankComment.textContent = '🍒 さいごまで がんばったね！';
+      }
+
+      updateBestTimesUI();
+
+      // さくらんぼ計算ビジュアル解説を構築（結果画面の一覧でも見直し可能）
+      renderSakuranboExplanations();
+    }
+
+    // ベストタイムUIの更新
+    function updateBestTimesUI() {
+      document.getElementById('best10').textContent = bestTimes[10] ? formatTime(bestTimes[10]) : '-';
+      document.getElementById('best20').textContent = bestTimes[20] ? formatTime(bestTimes[20]) : '-';
+      document.getElementById('bestAll').textContent = bestTimes.all ? formatTime(bestTimes.all) : '-';
+    }
+
+
+    /* ========================================================
+       7. さくらんぼ計算 ビジュアル解説の描画
+       ======================================================== */
+    function renderSakuranboExplanations() {
+      sakuranboList.innerHTML = '';
+
+      playHistory.forEach((item, index) => {
+        const { a, b, ans, firstTry } = item;
+        const need = 10 - a;      // aを10にするのに必要な数
+        const rest = b - need;    // bの残りの数
+
+        const card = document.createElement('div');
+        card.className = "bg-rose-50/70 border-2 border-rose-200 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm";
+
+        // SVGによるさくらんぼグラフィック
+        const svgCherry = createSakuranboSVG(a, b, need, rest, ans);
+
+        // 文章によるステップ解説
+        const textSteps = `
+          <div class="flex-1 w-full text-left">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-black text-rose-500 bg-white px-2 py-0.5 rounded-full border border-rose-200">
+                だい ${index + 1} もん
+              </span>
+              <span class="text-xs font-bold ${firstTry ? 'text-emerald-600 bg-emerald-50 border-emerald-200' : 'text-amber-600 bg-amber-50 border-amber-200'} px-2 py-0.5 rounded-full border">
+                ${firstTry ? '🌸 いっパツせいかい' : '💡 クリア！'}
+              </span>
+            </div>
+
+            <!-- 3ステップ解説 -->
+            <div class="space-y-1.5 text-xs font-bold text-slate-700 bg-white/90 p-3 rounded-xl border border-rose-100">
+              <div class="flex items-start gap-1.5">
+                <span class="bg-rose-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] shrink-0 mt-0.5">1</span>
+                <div>
+                  <span class="font-black text-rose-600">${a}</span> は あと <span class="text-rose-600 font-black text-sm">「${need}」</span> で 10！
+                </div>
+              </div>
+              <div class="flex items-start gap-1.5">
+                <span class="bg-pink-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] shrink-0 mt-0.5">2</span>
+                <div>
+                  うしろの <span class="font-black text-pink-600">${b}</span> を <span class="text-rose-600 font-black">「${need}」</span> と <span class="text-pink-600 font-black">「${rest}」</span> に わける（🍒）
+                </div>
+              </div>
+              <div class="flex items-start gap-1.5">
+                <span class="bg-amber-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] shrink-0 mt-0.5">3</span>
+                <div>
+                  10 と のこりの <span class="text-pink-600 font-black">「${rest}」</span> で こたえは <span class="text-rose-600 font-black text-sm">「${ans}」</span>！
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+
+        card.innerHTML = `
+          <div class="w-full flex flex-col sm:flex-row items-center gap-4">
+            <div class="shrink-0 flex items-center justify-center bg-white p-2 rounded-2xl border border-rose-200 shadow-inner">
+              ${svgCherry}
+            </div>
+            ${textSteps}
+          </div>
+        `;
+
+        sakuranboList.appendChild(card);
+      });
+    }
+
+    // さくらんぼ計算のSVGイラスト生成
+    function createSakuranboSVG(a, b, need, rest, ans) {
+      return `
+        <svg viewBox="0 0 220 150" class="w-48 h-32" xmlns="http://www.w3.org/2000/svg">
+          <!-- 上部の計算式 -->
+          <text x="35" y="32" font-family="'M PLUS Rounded 1c', sans-serif" font-size="28" font-weight="900" fill="#e11d48" text-anchor="middle">${a}</text>
+          <text x="65" y="30" font-family="'M PLUS Rounded 1c', sans-serif" font-size="20" font-weight="900" fill="#94a3b8" text-anchor="middle">+</text>
+          <text x="95" y="32" font-family="'M PLUS Rounded 1c', sans-serif" font-size="28" font-weight="900" fill="#db2777" text-anchor="middle">${b}</text>
+          <text x="125" y="30" font-family="'M PLUS Rounded 1c', sans-serif" font-size="20" font-weight="900" fill="#94a3b8" text-anchor="middle">=</text>
+          <text x="165" y="32" font-family="'M PLUS Rounded 1c', sans-serif" font-size="28" font-weight="900" fill="#e11d48" text-anchor="middle">${ans}</text>
+
+          <!-- 10のまとまりの連結ガイド（点線オーバル） -->
+          <ellipse cx="50" cy="72" rx="42" ry="38" fill="none" stroke="#f43f5e" stroke-width="2" stroke-dasharray="4,4" opacity="0.6"/>
+          <rect x="22" y="70" width="36" height="16" rx="8" fill="#ffe4e6" stroke="#f43f5e" stroke-width="1.5" />
+          <text x="40" y="82" font-family="'M PLUS Rounded 1c', sans-serif" font-size="10" font-weight="900" fill="#e11d48" text-anchor="middle">10！</text>
+
+          <!-- さくらんぼの軸（茎） -->
+          <!-- 左の実への軸 -->
+          <path d="M 95 38 Q 80 60 70 95" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round"/>
+          <!-- 右の実への軸 -->
+          <path d="M 95 38 Q 105 60 115 95" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round"/>
+
+          <!-- 葉っぱの飾り -->
+          <path d="M 95 38 Q 110 32 108 22 Q 98 25 95 38 Z" fill="#22c55e" stroke="#15803d" stroke-width="1"/>
+
+          <!-- 左のさくらんぼ（need） -->
+          <g transform="translate(68, 108)">
+            <circle cx="0" cy="0" r="18" fill="#ef4444" stroke="#b91c1c" stroke-width="2"/>
+            <!-- ハイライト -->
+            <ellipse cx="-5" cy="-6" rx="5" ry="3" fill="#ffffff" opacity="0.6" transform="rotate(-30 -5 -6)"/>
+            <text x="0" y="6" font-family="'M PLUS Rounded 1c', sans-serif" font-size="17" font-weight="900" fill="#ffffff" text-anchor="middle">${need}</text>
+          </g>
+
+          <!-- 右のさくらんぼ（rest） -->
+          <g transform="translate(118, 108)">
+            <circle cx="0" cy="0" r="18" fill="#f43f5e" stroke="#be123c" stroke-width="2"/>
+            <!-- ハイライト -->
+            <ellipse cx="-5" cy="-6" rx="5" ry="3" fill="#ffffff" opacity="0.6" transform="rotate(-30 -5 -6)"/>
+            <text x="0" y="6" font-family="'M PLUS Rounded 1c', sans-serif" font-size="17" font-weight="900" fill="#ffffff" text-anchor="middle">${rest}</text>
+          </g>
+
+          <!-- 右側の説明吹き出し矢印 -->
+          <path d="M 140 108 L 155 108" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-linecap="round" stroke-dasharray="2,2"/>
+          <text x="180" y="104" font-family="'M PLUS Rounded 1c', sans-serif" font-size="10" font-weight="bold" fill="#64748b" text-anchor="middle">10 と ${rest}</text>
+          <text x="180" y="118" font-family="'M PLUS Rounded 1c', sans-serif" font-size="11" font-weight="900" fill="#e11d48" text-anchor="middle">で ${ans}！</text>
+        </svg>
+      `;
+    }
+
+  </script>
+</body>
+</html>
